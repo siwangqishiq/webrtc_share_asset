@@ -1,3 +1,5 @@
+![logo](./img/logo.png "logo") 
+
 ## WebRtc分享
 
 #### 音视频通话需要解决的问题 
@@ -48,7 +50,9 @@
     
 #### WebRtc介绍
     一套客户端API 用于辅助客户端完成音视频通话的开发
-    
+
+![arch](./img/arch.png "arch")
+
     解决上述通话流程中的两个问题
         1.媒体协商
             客户端通过SDP协议 互相告知对方支持的编解码格式等信息
@@ -145,10 +149,10 @@ stream.getTracks().forEach(track => {
 F3: A产生Offer 
 
                         [信令服务]           [ICE服务] 
-                    .       |
-                .           |
-            .               |       
-        .                   | 
+                            |
+                            |
+                            |       
+                            | 
     A --------------------->|-----------------------------------  B
 ```js
 peerConnection.createOffer().then(offer => {
