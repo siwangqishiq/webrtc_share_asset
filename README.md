@@ -423,11 +423,89 @@ function handleCloseSignal(data) {
 
 
 #### 不同平台的实现
-    web 游览器自带
+##### web 
 
-    Android java
+##### Android 
+
+引入  
+
+    implementation 'org.webrtc:google-webrtc:1.0+'
+
+```java
+//webrtc相关API 通过PeerConnectionFactory获取
+private PeerConnectionFactory getPeerConnectionFactory(){
+    if(mPeerConnectionFactory != null){
+        return mPeerConnectionFactory;
+    }
+
+    PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(this)
+            .createInitializationOptions());
+    VideoEncoderFactory encoderFactory = new DefaultVideoEncoderFactory(mEglBase.getEglBaseContext(),
+            true, true);
+    VideoDecoderFactory decoderFactory=new DefaultVideoDecoderFactory(mEglBase.getEglBaseContext());
+    PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
+    mPeerConnectionFactory = PeerConnectionFactory.builder()
+                .setOptions(options)
+                .setAudioDeviceModule(JavaAudioDeviceModule.builder(this)
+                .createAudioDeviceModule())
+                .setVideoDecoderFactory(decoderFactory)
+                .setVideoEncoderFactory(encoderFactory)
+                .createPeerConnectionFactory();
+    return mPeerConnectionFactory;
+}
+
+//从Factory中获取PeerConnection
+@Nullable
+public PeerConnection createPeerConnection(RTCConfiguration rtcConfig, Observer observer) {
+    return this.createPeerConnection((RTCConfiguration)rtcConfig, (MediaConstraints)null, observer);
+}
+
+//本地视频 远端视频显示
+org.webrtc.SurfaceViewRenderer
+
+```
     
-    flutter dart
+##### flutter 
+
+引入 
+
+    flutter_webrtc: ^0.9.19 
+```dart
+//音视频流获取
+final mediaConstraints = <String, dynamic>{
+    'audio': true,
+    'video': true
+};
+navigator.mediaDevices.getUserMedia(mediaConstraints)
+    .then((stream) => handleOfferStartedStream(stream , jsonData))
+    .catchError((err){
+        LogUtil.i(TAG, "get user media error $err");
+    });
+
+//创建PeerConnection
+Future<RTCPeerConnection> buildPeerConnection() async{
+    var configuration = <String , dynamic>{};
+    const iceServer = {
+        "urls" : "turn:101.34.23.152:3478",
+    };
+    configuration['iceServers'] = [iceServer];
+    configuration['iceTransportPolicy'] = "relay";
+    var pc = await createPeerConnection(configuration);
+    return pc;
+}
+
+//视频显示View
+
+RTCVideoView(
+    this._renderer, {
+    Key? key,
+    this.objectFit = RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+    this.mirror = false,
+    this.filterQuality = FilterQuality.low,
+    this.placeholderBuilder,
+}) : super(key: key);
+
+```
 
 #### WebRTC 与 Sip协议
     两者是互补关系 
@@ -435,5 +513,40 @@ function handleCloseSignal(data) {
     WebRTC在信令传输时采用Sip协议
     利用Sip协议包含的 Register Invite Bye 完成WebRTC会话的创建 SDP协商 ICE的交换
 
+JsSip实现源码 
+> jssip.js
+```js
+value: function _createLocalDescription(type, constraints) {
+      var _this13 = this;
+
+      logger.debug('createLocalDescription()');
+      if (type !== 'offer' && type !== 'answer') throw new Error("createLocalDescription() | invalid type \"".concat(type, "\""));
+      var connection = this._connection;
+      this._rtcReady = false;
+      return Promise.resolve() // Create Offer or Answer.
+      .then(function () {
+        if (type === 'offer') {
+          return connection.createOffer(constraints)["catch"](function (error) {
+            logger.warn('emit "peerconnection:createofferfailed" [error:%o]', error);
+            _this13.emit('peerconnection:createofferfailed', error);
+            return Promise.reject(error);
+          });
+        } else {
+          return connection.createAnswer(constraints)["catch"](function (error) {
+            logger.warn('emit "peerconnection:createanswerfailed" [error:%o]', error);
+            _this13.emit('peerconnection:createanswerfailed', error);
+            return Promise.reject(error);
+          });
+        }
+      }) // Set local description.
+      .then(function (desc) {
+        return connection.setLocalDescription(desc)["catch"](function (error) {
+          _this13._rtcReady = true;
+          logger.warn('emit "peerconnection:setlocaldescriptionfailed" [error:%o]', error);
+          _this13.emit('peerconnection:setlocaldescriptionfailed', error);
+          return Promise.reject(error);
+        });
+      })
+```
 
     
